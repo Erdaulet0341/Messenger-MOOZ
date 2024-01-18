@@ -1,20 +1,18 @@
 package com.messenger.screens
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.text.TextUtils
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,12 +34,18 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.messenger.navigation.HOME_SCREEN
 import com.messenger.ui.theme.greenColor
+import com.google.firebase.FirebaseException
+import com.google.firebase.auth.*
+import com.google.firebase.auth.PhoneAuthProvider.ForceResendingToken
+import com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun StartScreen(navHostController: NavHostController) {
-        Surface(
+
+    Surface(
             modifier = Modifier.fillMaxSize(),
             color  = Color.White
         ) {
@@ -74,11 +78,15 @@ fun StartScreen(navHostController: NavHostController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VerificationUI(context: Context, navHostController: NavHostController) {
-    var email by remember { mutableStateOf("") }
+    var phonenumber by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("4") }
     var verificationID by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-    val regex = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\$")
+    val message = remember {
+        mutableStateOf("")
+    }
+
+    var mAuth: FirebaseAuth = FirebaseAuth.getInstance();
+    lateinit var callbacks: PhoneAuthProvider.OnVerificationStateChangedCallbacks
 
     Column(
         modifier = Modifier
@@ -89,10 +97,10 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TextField(
-            value = email,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            onValueChange = { email = it },
-            placeholder = { Text(text = "Enter your email address") },
+            value = phonenumber,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            onValueChange = { phonenumber = it },
+            placeholder = { Text(text = "Enter your phone number") },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
@@ -111,16 +119,15 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
 
         Button(
             onClick = {
-                if (TextUtils.isEmpty(email)) {
-                    Toast.makeText(context, "Please enter email address..", Toast.LENGTH_SHORT)
-                        .show()
-                } else if (regex.matches(email)){
-                    Toast.makeText(context, "ok", Toast.LENGTH_SHORT)
+                if (TextUtils.isEmpty(phonenumber)) {
+                    Toast.makeText(context, "Please enter phone number..", Toast.LENGTH_SHORT)
                         .show()
                 }
                 else{
-                    Toast.makeText(context, "Please enter email address..", Toast.LENGTH_SHORT)
+                    Toast.makeText(context, "ok", Toast.LENGTH_SHORT)
                         .show()
+                    sendVerificationCode(phonenumber, mAuth, context as Activity, callbacks)
+
                 }
             },
             modifier = Modifier
@@ -163,8 +170,20 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
                 if (TextUtils.isEmpty(code)) {
                     Toast.makeText(context, "Please enter CODE..", Toast.LENGTH_SHORT).show()
                 } else {
-                    navHostController.popBackStack()
-                    navHostController.navigate(HOME_SCREEN)
+                    val credential: PhoneAuthCredential = PhoneAuthProvider.getCredential(
+                        verificationID, code
+                    )
+
+                    signInWithPhoneAuthCredential(
+                        credential,
+                        mAuth,
+                        context as Activity,
+                        context,
+                        message
+                    )
+
+//                    navHostController.popBackStack()
+//                    navHostController.navigate(HOME_SCREEN)
                 }
             },
             modifier = Modifier
@@ -182,8 +201,65 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
         Spacer(modifier = Modifier.height(5.dp))
 
         Text(
-            text = message,
+            text = message.value,
             style = TextStyle(color = greenColor, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         )
     }
+    callbacks = object : OnVerificationStateChangedCallbacks() {
+        override fun onVerificationCompleted(p0: PhoneAuthCredential) {
+            message.value = "Verification successful"
+            Toast.makeText(context, "Verification successful..", Toast.LENGTH_SHORT).show()
+        }
+
+        override fun onVerificationFailed(p0: FirebaseException) {
+            message.value = "Fail to verify user : \n" + p0.message
+            Toast.makeText(context, "Verification failed..", Toast.LENGTH_SHORT).show()
+        }
+
+        override fun onCodeSent(verificationId: String, p1: ForceResendingToken) {
+            super.onCodeSent(verificationId, p1)
+            verificationID = verificationId
+            Log.d("errorr", verificationID)
+        }
+    }
+}
+
+private fun signInWithPhoneAuthCredential(
+    credential: PhoneAuthCredential,
+    auth: FirebaseAuth,
+    activity: Activity,
+    context: Context,
+    message: MutableState<String>
+) {
+    auth.signInWithCredential(credential)
+        .addOnCompleteListener(activity) { task ->
+            if (task.isSuccessful) {
+                message.value = "Verification successful"
+                Toast.makeText(context, "Verification successful..", Toast.LENGTH_SHORT).show()
+            } else {
+                if (task.exception is FirebaseAuthInvalidCredentialsException) {
+                    Toast.makeText(
+                        context,
+                        "Verification failed.." + (task.exception as FirebaseAuthInvalidCredentialsException).message,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+}
+
+
+private fun sendVerificationCode(
+    number: String,
+    auth: FirebaseAuth,
+    activity: Activity,
+    callbacks: OnVerificationStateChangedCallbacks
+) {
+    val options = PhoneAuthOptions.newBuilder(auth)
+        .setPhoneNumber(number)
+        .setTimeout(60L, TimeUnit.SECONDS)
+        .setActivity(activity)
+        .setCallbacks(callbacks)
+        .build()
+    PhoneAuthProvider.verifyPhoneNumber(options)
 }

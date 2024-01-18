@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -72,4 +73,7 @@ dependencies {
     implementation ("androidx.navigation:navigation-compose:2.6.0")
     implementation (platform ("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
     implementation ("com.google.accompanist:accompanist-systemuicontroller:0.23.0")
+
+    implementation ("com.google.firebase:firebase-auth:19.3.2")
+
 }
