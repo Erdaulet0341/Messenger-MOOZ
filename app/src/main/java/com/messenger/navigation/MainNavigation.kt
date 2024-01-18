@@ -5,8 +5,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.messenger.screens.StartScreen
-import com.messenger.screens.ChatScreen
 import com.messenger.screens.HomeScreen
+import com.nameisjayant.projects.chat.components.screens.ChatScreen
 
 @Composable
 fun MainNavigation() {

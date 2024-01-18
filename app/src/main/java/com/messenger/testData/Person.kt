@@ -1,9 +1,11 @@
 package com.messenger.testData
+import java.io.Serializable
+
 data class Person(
     val id: Int = 0,
     val name: String = "",
     val imgText:String = ""
-)
+): Serializable
 
 val personList = listOf(
     Person(
