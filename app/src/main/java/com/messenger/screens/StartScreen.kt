@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.messenger.navigation.HOME_SCREEN
 import com.messenger.ui.theme.greenColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,16 +54,16 @@ fun StartScreen(navHostController: NavHostController) {
                     )
                 }
             ) {
-                PhoneVerificationUI(LocalContext.current)
+                PhoneVerificationUI(LocalContext.current, navHostController)
             }
         }
 
 }
 
 @Composable
-fun PhoneVerificationUI(context: Context) {
+fun PhoneVerificationUI(context: Context, navHostController: NavHostController) {
     var email by remember { mutableStateOf("") }
-    var otp by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("4") }
     var verificationID by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
 
@@ -112,9 +113,9 @@ fun PhoneVerificationUI(context: Context) {
         Spacer(modifier = Modifier.height(10.dp))
 
         TextField(
-            value = otp,
+            value = code,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            onValueChange = { otp = it },
+            onValueChange = { code = it },
             placeholder = { Text(text = "Enter your CODE") },
             modifier = Modifier
                 .padding(16.dp)
@@ -127,9 +128,11 @@ fun PhoneVerificationUI(context: Context) {
 
         Button(
             onClick = {
-                if (TextUtils.isEmpty(otp)) {
+                if (TextUtils.isEmpty(code)) {
                     Toast.makeText(context, "Please enter CODE..", Toast.LENGTH_SHORT).show()
                 } else {
+                    navHostController.popBackStack()
+                    navHostController.navigate(HOME_SCREEN)
                 }
             },
             modifier = Modifier
