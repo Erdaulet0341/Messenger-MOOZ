@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.text.TextUtils
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -36,10 +35,6 @@ import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.*
 import com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
-import com.google.firebase.database.ktx.database
-import com.google.firebase.ktx.Firebase
-import com.messenger.data.User
-import com.messenger.navigation.CHAT_SCREEN
 import com.messenger.navigation.HOME_SCREEN
 import com.messenger.navigation.REGISTER_SCREEN
 import com.messenger.ui.theme.greenColor
@@ -119,9 +114,7 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
         }
 
         override fun onCodeSent(verificationId: String, p1: PhoneAuthProvider.ForceResendingToken) {
-            Log.d("TAG", "onCodeSent:$verificationId")
             verificationID = verificationId
-            Log.d("errorr", verificationID)
         }
     }
 

@@ -2,9 +2,6 @@ package com.messenger.screens
 
 
 import android.content.Context
-import android.media.MediaPlayer
-import android.media.MediaPlayer.OnCompletionListener
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -58,9 +55,9 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import com.messenger.R
 import com.messenger.data.Message
 import com.messenger.data.User
-import com.messenger.R
 import com.messenger.messengerElements.IconComponentDrawable
 import com.messenger.messengerElements.SpacerWidth
 import com.messenger.navigation.HOME_SCREEN
@@ -105,15 +102,12 @@ fun ChatScreen(
                 newMessageList.add(message!!)
             }
             messageList = newMessageList
-            Log.d("msg0", messageList.size.toString())
-
         }
 
         override fun onCancelled(error: DatabaseError) {
             TODO("Not yet implemented")
         }
     })
-    Log.d("msg1", messageList.size.toString())
 
     Box(
         modifier = Modifier
@@ -290,8 +284,6 @@ fun CustomTextField(
                     val oneMessage = Message(message, formattedTime, useruid)
                     val senderroom = useruid+receiveruid
                     val receiverroom = receiveruid+useruid
-
-                    Log.d("erroor", "$senderroom and $receiverroom")
 
                     val senderRef = database.child("chats")
                         .child(senderroom)

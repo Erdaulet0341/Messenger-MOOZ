@@ -56,10 +56,8 @@ import com.messenger.ui.theme.gradient1
 import com.messenger.ui.theme.gradient2
 import com.messenger.ui.theme.gradient3
 import com.messenger.ui.theme.gradient4
-
 import com.messenger.R
 import java.util.Locale
-
 
 @Composable
 fun HomeScreen(
