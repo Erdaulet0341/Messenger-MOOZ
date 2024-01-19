@@ -1,4 +1,4 @@
-package com.nameisjayant.projects.chat.components.screens
+package com.messenger.screens
 
 
 import android.content.Context

@@ -36,6 +36,8 @@ import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.*
 import com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
+import com.messenger.navigation.CHAT_SCREEN
+import com.messenger.navigation.REGISTER_SCREEN
 import com.messenger.ui.theme.greenColor
 import java.util.concurrent.TimeUnit
 
@@ -78,7 +80,7 @@ fun StartScreen(navHostController: NavHostController) {
 @Composable
 fun VerificationUI(context: Context, navHostController: NavHostController) {
     var phonenumber by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("4") }
+    var code by remember { mutableStateOf("") }
     var verificationID by remember { mutableStateOf("") }
     val message = remember {
         mutableStateOf("")
@@ -202,11 +204,9 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
                         mAuth,
                         context as Activity,
                         context,
-                        message
+                        message,
+                        navHostController
                     )
-
-//                    navHostController.popBackStack()
-//                    navHostController.navigate(HOME_SCREEN)
                 }
             },
             modifier = Modifier
@@ -235,7 +235,8 @@ private fun signInWithPhoneAuthCredential(
     auth: FirebaseAuth,
     activity: Activity,
     context: Context,
-    message: MutableState<String>
+    message: MutableState<String>,
+    navHostController: NavHostController
 ) {
     auth.signInWithCredential(credential)
         .addOnCompleteListener(activity) { task ->
@@ -243,6 +244,15 @@ private fun signInWithPhoneAuthCredential(
                 message.value = "Verification successful"
                 val user = task.result?.user!!
                 Toast.makeText(context, "uid = ${user.uid}", Toast.LENGTH_SHORT).show()
+                navHostController.currentBackStackEntry?.savedStateHandle?.set(
+                    "useruid",
+                    user.uid
+                )
+                navHostController.currentBackStackEntry?.savedStateHandle?.set(
+                    "usernumber",
+                    user.phoneNumber
+                )
+                navHostController.navigate(REGISTER_SCREEN)
             } else {
                 if (task.exception is FirebaseAuthInvalidCredentialsException) {
                     Toast.makeText(
