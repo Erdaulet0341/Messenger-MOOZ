@@ -32,12 +32,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.messenger.navigation.HOME_SCREEN
-import com.messenger.ui.theme.greenColor
 import com.google.firebase.FirebaseException
+import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.*
-import com.google.firebase.auth.PhoneAuthProvider.ForceResendingToken
 import com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
+import com.messenger.ui.theme.greenColor
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +85,31 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
     }
 
     var mAuth: FirebaseAuth = FirebaseAuth.getInstance();
-    lateinit var callbacks: PhoneAuthProvider.OnVerificationStateChangedCallbacks
+    var callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks(){
+        override fun onVerificationCompleted(p0: PhoneAuthCredential) {
+            message.value = "Verification successful"
+            Toast.makeText(context, "Verification successful..", Toast.LENGTH_SHORT).show()
+        }
+
+        override fun onVerificationFailed(e: FirebaseException) {
+            message.value = "Fail to verify user : \n" + e.message
+            Toast.makeText(context, "Verification failed..", Toast.LENGTH_SHORT).show()
+            if (e is FirebaseAuthInvalidCredentialsException) {
+                Toast.makeText(context, "Verification failed Invalid request", Toast.LENGTH_SHORT).show()
+            } else if (e is FirebaseTooManyRequestsException) {
+                Toast.makeText(context, "Verification failed The SMS quota for the project has been exceeded", Toast.LENGTH_SHORT).show()
+            }
+            else if (e is FirebaseAuthMissingActivityForRecaptchaException) {
+                Toast.makeText(context, "Verification failed reCAPTCHA verification attempted with null Activity", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        override fun onCodeSent(verificationId: String, p1: PhoneAuthProvider.ForceResendingToken) {
+            Log.d("TAG", "onCodeSent:$verificationId")
+            verificationID = verificationId
+            Log.d("errorr", verificationID)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -205,23 +228,6 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
             style = TextStyle(color = greenColor, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         )
     }
-    callbacks = object : OnVerificationStateChangedCallbacks() {
-        override fun onVerificationCompleted(p0: PhoneAuthCredential) {
-            message.value = "Verification successful"
-            Toast.makeText(context, "Verification successful..", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onVerificationFailed(p0: FirebaseException) {
-            message.value = "Fail to verify user : \n" + p0.message
-            Toast.makeText(context, "Verification failed..", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onCodeSent(verificationId: String, p1: ForceResendingToken) {
-            super.onCodeSent(verificationId, p1)
-            verificationID = verificationId
-            Log.d("errorr", verificationID)
-        }
-    }
 }
 
 private fun signInWithPhoneAuthCredential(
@@ -235,7 +241,8 @@ private fun signInWithPhoneAuthCredential(
         .addOnCompleteListener(activity) { task ->
             if (task.isSuccessful) {
                 message.value = "Verification successful"
-                Toast.makeText(context, "Verification successful..", Toast.LENGTH_SHORT).show()
+                val user = task.result?.user!!
+                Toast.makeText(context, "uid = ${user.uid}", Toast.LENGTH_SHORT).show()
             } else {
                 if (task.exception is FirebaseAuthInvalidCredentialsException) {
                     Toast.makeText(
