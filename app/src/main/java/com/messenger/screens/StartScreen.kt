@@ -36,7 +36,11 @@ import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.*
 import com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
+import com.messenger.data.User
 import com.messenger.navigation.CHAT_SCREEN
+import com.messenger.navigation.HOME_SCREEN
 import com.messenger.navigation.REGISTER_SCREEN
 import com.messenger.ui.theme.greenColor
 import java.util.concurrent.TimeUnit
@@ -46,9 +50,17 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun StartScreen(navHostController: NavHostController) {
 
-    Surface(
+    val context = LocalContext.current
+    val user = retrieveUserData(context, "userdata")
+
+    if(user != null){
+        navHostController.navigate(HOME_SCREEN)
+    }
+    else {
+
+        Surface(
             modifier = Modifier.fillMaxSize(),
-            color  = Color.White
+            color = Color.White
         ) {
             Scaffold(
                 topBar = {
@@ -73,7 +85,7 @@ fun StartScreen(navHostController: NavHostController) {
                 VerificationUI(LocalContext.current, navHostController)
             }
         }
-
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -29,15 +29,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.*
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
-import com.messenger.Data.User
+import com.messenger.data.User
 import com.messenger.navigation.HOME_SCREEN
-import com.messenger.navigation.REGISTER_SCREEN
 import com.messenger.ui.theme.greenColor
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -190,6 +193,9 @@ private fun addToRealTimeDatabase(
                 "useruidchat",
                 user.uid
             )
+
+            saveUserData(context, user, "userdata")
+
             Toast.makeText(context, "Sussessfully added user", Toast.LENGTH_SHORT).show()
             navHostController.navigate(HOME_SCREEN)
         }

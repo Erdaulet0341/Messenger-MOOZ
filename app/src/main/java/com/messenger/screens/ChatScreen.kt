@@ -2,6 +2,9 @@ package com.messenger.screens
 
 
 import android.content.Context
+import android.media.MediaPlayer
+import android.media.MediaPlayer.OnCompletionListener
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +41,7 @@ import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.Alignment.Companion.Center
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -46,29 +50,70 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import androidx.navigation.NavHostController
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
+import com.messenger.data.Message
+import com.messenger.data.User
 import com.messenger.R
 import com.messenger.messengerElements.IconComponentDrawable
 import com.messenger.messengerElements.SpacerWidth
-import com.messenger.testData.Chat
-import com.messenger.testData.Person
-import com.messenger.testData.chatList
+import com.messenger.navigation.HOME_SCREEN
 import com.messenger.ui.theme.Gray
 import com.messenger.ui.theme.Gray400
 import com.messenger.ui.theme.Line
 import com.messenger.ui.theme.ReceiverColor
 import com.messenger.ui.theme.SenderColor
+import com.messenger.ui.theme.gradient1
+import com.messenger.ui.theme.gradient2
+import com.messenger.ui.theme.gradient3
+import com.messenger.ui.theme.gradient4
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun ChatScreen(
     navHostController: NavHostController
 ) {
+    val context = LocalContext.current
+    val sender = retrieveUserData(context, "userdata")
+    val receiver = retrieveUserData(context, "receiverUser")
 
-    var message by remember { mutableStateOf("") }
-    val data =
-        navHostController.previousBackStackEntry?.savedStateHandle?.get<Person>("data") ?: Person()
-    val useruid =
-        navHostController.previousBackStackEntry?.savedStateHandle?.get<String>("useruidchat") ?: String()
+    val senderroom = sender!!.uid+receiver!!.uid
+
+    var database = Firebase.database.reference
+
+    var messageList by remember { mutableStateOf<List<Message>>(emptyList()) }
+    val databaseReference: DatabaseReference =
+        database.child("chats").child(senderroom).child("messages")
+
+    databaseReference.addValueEventListener(object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            val newMessageList = mutableListOf<Message>()
+
+            for (dataSnapshot in snapshot.children) {
+                val message = dataSnapshot.getValue(Message::class.java)
+                newMessageList.add(message!!)
+            }
+            messageList = newMessageList
+            Log.d("msg0", messageList.size.toString())
+
+        }
+
+        override fun onCancelled(error: DatabaseError) {
+            TODO("Not yet implemented")
+        }
+    })
+    Log.d("msg1", messageList.size.toString())
 
     Box(
         modifier = Modifier
@@ -78,11 +123,12 @@ fun ChatScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            UserNameRow(
-                person = data,
-                modifier = Modifier.padding(top = 12.dp, start = 8.dp, bottom = 8.dp),
-                navHostController = navHostController
-            )
+                UserNameRow(
+                    user = receiver,
+                    modifier = Modifier.padding(top = 12.dp, start = 8.dp, bottom = 8.dp),
+                    navHostController = navHostController
+                )
+
             Divider(
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -98,41 +144,62 @@ fun ChatScreen(
                         start = 8.dp,
                         top = 15.dp,
                         end = 8.dp,
-                        bottom = 15.dp
+                        bottom = 75.dp
                     )
                 ) {
-                    items(chatList, key = { it.id }) {
-                        ChatRow(chat = it)
+                    items(messageList, key = { it.hashCode() }) {
+                        ChatRow(message = it, sender!!.uid!!)
                     }
                 }
             }
         }
 
         CustomTextField(
-            text = message, onValueChange = { message = it },
             modifier = Modifier
                 .padding(horizontal = 20.dp, vertical = 10.dp)
-                .align(BottomCenter)
+                .align(BottomCenter),
+            useruid = sender!!.uid!!,
+            receiveruid = receiver!!.uid!!,
+            database = database
         )
     }
 
 }
 
+fun saveUserData(context: Context, userData: User, preName:String ) {
+    val preferences = context.getSharedPreferences(preName, Context.MODE_PRIVATE)
+    val json = Json.encodeToString(userData)
+    preferences.edit {
+        putString("userData", json)
+    }
+}
+
+fun retrieveUserData(context: Context, preName:String ): User?{
+    val preferences = context.getSharedPreferences(preName, Context.MODE_PRIVATE)
+    val json = preferences.getString("userData", null)
+    return if (json != null) {
+        Json.decodeFromString(json)
+    } else {
+        null
+    }
+}
+
 @Composable
 fun ChatRow(
-    chat: Chat
+    message: Message,
+    senderuid:String
 ) {
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        horizontalAlignment = if (chat.direction) Alignment.Start else Alignment.End
+        horizontalAlignment = if (message.id != senderuid) Alignment.Start else Alignment.End
     ) {
         Box(
             modifier = Modifier
                 .background(
-                    if (chat.direction) ReceiverColor else SenderColor,
+                    if (message.id != senderuid) ReceiverColor else SenderColor,
                     RoundedCornerShape(100.dp)
                 )
                 .padding(4.dp),
@@ -145,7 +212,7 @@ fun ChatRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = chat.message,
+                    text = message.message!!,
                     style = TextStyle(
                         color = Color.Black,
                         fontSize = 16.sp
@@ -154,7 +221,7 @@ fun ChatRow(
                         .widthIn(0.dp, 232.dp)
                 )
                 Text(
-                    text = chat.time,
+                    text = message.time!!,
                     style = TextStyle(
                         color = Gray,
                         fontSize = 14.sp
@@ -173,12 +240,16 @@ fun ChatRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomTextField(
-    text: String,
     modifier: Modifier = Modifier,
-    onValueChange: (String) -> Unit
-) {
+    useruid: String,
+    receiveruid: String,
+    database: DatabaseReference,
+    ) {
+
+    var message by remember { mutableStateOf("") }
+
     TextField(
-        value = text, onValueChange = { onValueChange(it) },
+        value = message, onValueChange = {message = it },
         placeholder = {
             Text(
                 text = stringResource(R.string.type_message),
@@ -206,8 +277,46 @@ fun CustomTextField(
 
         trailingIcon = {
             val context: Context = LocalContext.current
-            IconButton(onClick = { Toast.makeText(context, "Send!!", Toast.LENGTH_SHORT)
-                .show()}) {
+            IconButton(onClick = {
+                if(message.isNotEmpty()){
+                    Toast.makeText(context, "Send!!", Toast.LENGTH_SHORT)
+                        .show()
+
+                    message = message.replace("\\s+$".toRegex(), "")
+                    val formatter = DateTimeFormatter.ofPattern("hh:mm a")
+                    val currentTime = LocalTime.now()
+
+                    val formattedTime = currentTime.format(formatter)
+                    val oneMessage = Message(message, formattedTime, useruid)
+                    val senderroom = useruid+receiveruid
+                    val receiverroom = receiveruid+useruid
+
+                    Log.d("erroor", "$senderroom and $receiverroom")
+
+                    val senderRef = database.child("chats")
+                        .child(senderroom)
+                        .child("messages")
+                        .push()
+
+                    val receiverRef = database.child("chats")
+                        .child(receiverroom)
+                        .child("messages")
+                        .push()
+
+                    senderRef.setValue(oneMessage).addOnCompleteListener { senderTask ->
+                        if (senderTask.isSuccessful) {
+                            receiverRef.setValue(oneMessage).addOnCompleteListener {
+                                Toast.makeText(context, "Sussessfully added", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Failer added", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    message = ""
+                }
+            }
+            ) {
                 Icon(
                     imageVector = Icons.Outlined.Send,
                     contentDescription = "send"
@@ -224,7 +333,7 @@ fun CustomTextField(
 @Composable
 fun UserNameRow(
     modifier: Modifier = Modifier,
-    person: Person,
+    user: User,
     navHostController: NavHostController
 ) {
 
@@ -236,7 +345,17 @@ fun UserNameRow(
             val context: Context = LocalContext.current
 
             IconButton(onClick = {
-                navHostController.popBackStack()
+
+                navHostController.currentBackStackEntry?.savedStateHandle?.set(
+                    "useruidchat",
+                    user.uid
+                )
+                navHostController.navigate(HOME_SCREEN){
+                    popUpTo("currentScreen") {
+                        inclusive = true
+                    }
+
+                }
                 Toast.makeText(
                     context, "Back!!", Toast.LENGTH_SHORT
                 )
@@ -249,17 +368,36 @@ fun UserNameRow(
                     contentDescription = "send"
                 )
             }
+            val gradientList = listOf(gradient1, gradient2, gradient3, gradient4)
 
-//            IconComponentDrawable(icon = R.drawable.img, size = 42.dp)
+            var iconText = "${user.name!!.first()}${user.surname!!.first()}".uppercase(Locale.ROOT)
+            val randomGradient = gradientList.random()
+            val gradientBrush = Brush.linearGradient(randomGradient)
+
+            IconComponentDrawable(text = iconText, size = 45.dp, backgroundColor = gradientBrush, textColor = Color.White)
+
             SpacerWidth()
             Column {
-                Text(
-                    text = person.name, style = TextStyle(
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+
+                Row {
+                    Text(
+                        text = user.name!!, style = TextStyle(
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        ),
+                        modifier = Modifier
+                            .padding(end = 8.dp)
                     )
-                )
+
+                    Text(
+                        text = user.surname!!, style = TextStyle(
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    )
+                }
                 Text(
                     text = stringResource(R.string.online), style = TextStyle(
                         color = Color.Black,

@@ -45,7 +45,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
-import com.messenger.Data.User
+import com.messenger.data.User
 import com.messenger.messengerElements.IconComponentDrawable
 import com.messenger.messengerElements.SpacerHeight
 import com.messenger.messengerElements.SpacerWidth
@@ -65,19 +65,19 @@ import java.util.Locale
 fun HomeScreen(
     navHostController: NavHostController
 ) {
-    val useruid =
-        navHostController.previousBackStackEntry?.savedStateHandle?.get<String>("useruidchat") ?: String()
+    val context = LocalContext.current
+    val user = retrieveUserData(context, "userdata")
 
     var database = Firebase.database.reference
-    val context = LocalContext.current
 
     var userList by remember { mutableStateOf<List<User>>(emptyList()) }
-    LaunchedEffect(useruid) {
-        fetchUsers(database, context) { updatedUserList ->
-            userList = updatedUserList
+    if(user != null){
+        LaunchedEffect(user.uid) {
+            fetchUsers(database, context) { updatedUserList ->
+                userList = updatedUserList
+            }
         }
     }
-
 
     Box(
         modifier = Modifier
@@ -112,11 +112,7 @@ fun HomeScreen(
                 ) {
                     items(userList) {
                         UserEachRow(user = it) {
-                            val commonuid = useruid+it.uid
-                            navHostController.currentBackStackEntry?.savedStateHandle?.set(
-                                "commonuid",
-                                commonuid
-                            )
+                            saveUserData(context, it, "receiverUser")
                             navHostController.navigate(CHAT_SCREEN)
                         }
                     }
