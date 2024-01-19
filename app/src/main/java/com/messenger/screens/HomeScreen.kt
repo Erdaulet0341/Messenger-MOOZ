@@ -1,6 +1,8 @@
 package com.messenger.screens
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -19,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,28 +30,54 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
+import com.messenger.Data.User
 import com.messenger.messengerElements.IconComponentDrawable
 import com.messenger.messengerElements.SpacerHeight
 import com.messenger.messengerElements.SpacerWidth
-import com.messenger.testData.Person
-import com.messenger.testData.personList
 import com.messenger.navigation.CHAT_SCREEN
 import com.messenger.ui.theme.Gray
 import com.messenger.ui.theme.Line
+import com.messenger.ui.theme.gradient1
+import com.messenger.ui.theme.gradient2
+import com.messenger.ui.theme.gradient3
+import com.messenger.ui.theme.gradient4
+
 import com.messenger.R
+import java.util.Locale
 
 
 @Composable
 fun HomeScreen(
     navHostController: NavHostController
 ) {
+    val useruid =
+        navHostController.previousBackStackEntry?.savedStateHandle?.get<String>("useruidchat") ?: String()
+
+    var database = Firebase.database.reference
+    val context = LocalContext.current
+
+    var userList by remember { mutableStateOf<List<User>>(emptyList()) }
+    LaunchedEffect(useruid) {
+        fetchUsers(database, context) { updatedUserList ->
+            userList = updatedUserList
+        }
+    }
+
 
     Box(
         modifier = Modifier
@@ -73,18 +102,20 @@ fun HomeScreen(
             ) {
                 Divider(
                     modifier = Modifier
-                        .fillMaxWidth().padding(top = 16.dp),
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
                     thickness = 1.dp, color = Line,
                 )
 
                 LazyColumn(
                     modifier = Modifier.padding(bottom = 15.dp, top = 30.dp)
                 ) {
-                    items(personList, key = { it.id }) {
-                        UserEachRow(person = it) {
+                    items(userList) {
+                        UserEachRow(user = it) {
+                            val commonuid = useruid+it.uid
                             navHostController.currentBackStackEntry?.savedStateHandle?.set(
-                                "data",
-                                it
+                                "commonuid",
+                                commonuid
                             )
                             navHostController.navigate(CHAT_SCREEN)
                         }
@@ -96,6 +127,7 @@ fun HomeScreen(
     }
 
 }
+
 
 @Composable
 fun Headers (){
@@ -121,7 +153,8 @@ fun SearchBar(onSearch: (String) -> Unit) {
     TextField(
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp).padding(end = 24.dp),
+            .height(50.dp)
+            .padding(end = 24.dp),
         value = searchText,
         colors = TextFieldDefaults.textFieldColors(
             containerColor = Color(0xFFEDF2F6),
@@ -153,7 +186,9 @@ fun SearchBar(onSearch: (String) -> Unit) {
                 Icon(
                     Icons.Filled.Search,
                     contentDescription = "Search Icon",
-                    modifier = Modifier.size(20.dp).scale(1.5f),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .scale(1.5f),
                     tint = Color(0xFF9DB7CB)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -165,9 +200,10 @@ fun SearchBar(onSearch: (String) -> Unit) {
 
 @Composable
 fun UserEachRow(
-    person: Person,
+    user: User,
     onClick: () -> Unit
 ) {
+    val gradientList = listOf(gradient1, gradient2, gradient3, gradient4)
 
     Box(
         modifier = Modifier
@@ -182,14 +218,31 @@ fun UserEachRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row {
-                    IconComponentDrawable(icon = R.drawable.img, size = 60.dp)
+                    val iconText =
+                        "${user.name!!.first()}${user.surname!!.first()}".uppercase(Locale.ROOT)
+                    val randomGradient = gradientList.random()
+                    val gradientBrush = Brush.linearGradient(randomGradient)
+
+                    IconComponentDrawable(text = iconText, size = 60.dp, backgroundColor = gradientBrush, textColor = Color.White)
                     SpacerWidth()
                     Column {
-                        Text(
-                            text = person.name, style = TextStyle(
-                                color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold
+
+                        Row {
+                            Text(
+                                text = user.name!!, style = TextStyle(
+                                    color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
                             )
-                        )
+
+                            Text(
+                                text = user.surname!!, style = TextStyle(
+                                    color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
                         SpacerHeight(5.dp)
                         Text(
                             text = "Okey", style = TextStyle(
@@ -232,4 +285,32 @@ fun Modifier.noRippleEffect(onClick: () -> Unit) = composed {
     ) {
         onClick()
     }
+}
+
+private fun fetchUsers(
+    database: DatabaseReference,
+    context: Context,
+    onUsersFetched: (List<User>) -> Unit
+) {
+    val userList = ArrayList<User>()
+
+    database.child("users").addListenerForSingleValueEvent(object : ValueEventListener {
+        override fun onDataChange(dataSnapshot: DataSnapshot) {
+            for (userSnapshot in dataSnapshot.children) {
+                val user = userSnapshot.getValue(User::class.java)
+                user?.let { userList.add(it) }
+            }
+            if (userList.isNotEmpty()) {
+                Toast.makeText(context, "Users loaded successfully", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "No users found", Toast.LENGTH_SHORT).show()
+            }
+
+            onUsersFetched(userList)
+        }
+
+        override fun onCancelled(databaseError: DatabaseError) {
+            Toast.makeText(context, "Error fetching users", Toast.LENGTH_SHORT).show()
+        }
+    })
 }

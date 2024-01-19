@@ -19,3 +19,19 @@ val Line = Color(0XFFEFF0F1)
 val Gray400 = Color(0XFFE5E6E9)
 val SenderColor = Color(0XFF3CED78)
 val ReceiverColor = Color(0XFFEDF2F6)
+val gradient1 = listOf(
+    Color(0xFFF66700),
+    Color(0xFFED3900)
+)
+val gradient2 = listOf(
+    Color(0xFF1FDB5F),
+    Color(0xFF31C764)
+)
+val gradient3 = listOf(
+    Color(0xFF00ACF6),
+    Color(0xFF006DED)
+)
+val gradient4 = listOf(
+    Color(0xFFF66700),
+    Color(0xFFED3900)
+)

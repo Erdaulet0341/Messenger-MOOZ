@@ -3,19 +3,22 @@ package com.messenger.screens
 
 import android.content.Context
 import android.widget.Toast
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.Divider
@@ -25,16 +28,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.Alignment.Companion.Center
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +49,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.messenger.R
 import com.messenger.messengerElements.IconComponentDrawable
-import com.messenger.messengerElements.IconComponentImageVector
 import com.messenger.messengerElements.SpacerWidth
 import com.messenger.testData.Chat
 import com.messenger.testData.Person
@@ -52,8 +56,8 @@ import com.messenger.testData.chatList
 import com.messenger.ui.theme.Gray
 import com.messenger.ui.theme.Gray400
 import com.messenger.ui.theme.Line
-import com.messenger.ui.theme.SenderColor
 import com.messenger.ui.theme.ReceiverColor
+import com.messenger.ui.theme.SenderColor
 
 @Composable
 fun ChatScreen(
@@ -63,6 +67,8 @@ fun ChatScreen(
     var message by remember { mutableStateOf("") }
     val data =
         navHostController.previousBackStackEntry?.savedStateHandle?.get<Person>("data") ?: Person()
+    val useruid =
+        navHostController.previousBackStackEntry?.savedStateHandle?.get<String>("useruidchat") ?: String()
 
     Box(
         modifier = Modifier
@@ -244,7 +250,7 @@ fun UserNameRow(
                 )
             }
 
-            IconComponentDrawable(icon = R.drawable.img, size = 42.dp)
+//            IconComponentDrawable(icon = R.drawable.img, size = 42.dp)
             SpacerWidth()
             Column {
                 Text(

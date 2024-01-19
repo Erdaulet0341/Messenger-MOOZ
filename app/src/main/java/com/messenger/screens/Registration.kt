@@ -35,6 +35,8 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.messenger.Data.User
+import com.messenger.navigation.HOME_SCREEN
+import com.messenger.navigation.REGISTER_SCREEN
 import com.messenger.ui.theme.greenColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,7 +85,7 @@ fun RegistrationUI(context: Context, navHostController: NavHostController) {
         navHostController.previousBackStackEntry?.savedStateHandle?.get<String>("usernumber") ?: String()
 
     var database = Firebase.database.reference
-
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -141,7 +143,15 @@ fun RegistrationUI(context: Context, navHostController: NavHostController) {
                 } else {
 
 
-                    addToRealTimeDatabase(name, surname, useruid, usernumber, database)
+                    addToRealTimeDatabase(
+                        name,
+                        surname,
+                        useruid,
+                        usernumber,
+                        database,
+                        navHostController,
+                        context
+                    )
 
                 }
             },
@@ -167,10 +177,24 @@ private fun addToRealTimeDatabase(
     surname: String,
     uid: String,
     phonenumber: String,
-    database: DatabaseReference
+    database: DatabaseReference,
+    navHostController: NavHostController,
+    context: Context
 ) {
     val user = User(
         name, surname, uid, phonenumber
     )
-    database.child("users").child(user.uid!!).setValue(user)
+    database.child("users").child(user.uid!!).setValue(user).addOnCompleteListener {
+        if(it.isSuccessful){
+            navHostController.currentBackStackEntry?.savedStateHandle?.set(
+                "useruidchat",
+                user.uid
+            )
+            Toast.makeText(context, "Sussessfully added user", Toast.LENGTH_SHORT).show()
+            navHostController.navigate(HOME_SCREEN)
+        }
+        if(it.isCanceled){
+            Toast.makeText(context, "Fail adding user", Toast.LENGTH_SHORT).show()
+        }
+    }
 }
