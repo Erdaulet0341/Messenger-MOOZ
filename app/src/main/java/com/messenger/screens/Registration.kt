@@ -56,7 +56,7 @@ fun Registration(navHostController: NavHostController) {
                 TopAppBar(
                     title = {
                         Text(
-                            text = "REGISTRATION",
+                            text = "РЕГИСТРАЦИЯ",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
@@ -101,7 +101,7 @@ fun RegistrationUI(context: Context, navHostController: NavHostController) {
             value = name,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             onValueChange = { name = it },
-            placeholder = { Text(text = "Enter your name") },
+            placeholder = { Text(text = "Введите ваше имя") },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
@@ -122,7 +122,7 @@ fun RegistrationUI(context: Context, navHostController: NavHostController) {
             value = surname,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             onValueChange = { surname = it },
-            placeholder = { Text(text = "Enter your surname") },
+            placeholder = { Text(text = "Введите свою фамилию") },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
@@ -142,7 +142,7 @@ fun RegistrationUI(context: Context, navHostController: NavHostController) {
         Button(
             onClick = {
                 if (TextUtils.isEmpty(name) && TextUtils.isEmpty(surname)) {
-                    Toast.makeText(context, "Please enter name and surname..", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Пожалуйста, введите имя и фамилию..", Toast.LENGTH_SHORT).show()
                 } else {
 
 
@@ -187,20 +187,25 @@ private fun addToRealTimeDatabase(
     val user = User(
         name, surname, uid, phonenumber
     )
-    database.child("users").child(user.uid!!).setValue(user).addOnCompleteListener {
-        if(it.isSuccessful){
-            navHostController.currentBackStackEntry?.savedStateHandle?.set(
-                "useruidchat",
-                user.uid
-            )
+    if(!isInternetConnected(context)){
+        Toast.makeText(context, "Пожалуйста, проверьте интернет подключения..", Toast.LENGTH_SHORT).show()
+    }
+    else{
+        database.child("users").child(user.uid!!).setValue(user).addOnCompleteListener {
+            if(it.isSuccessful){
+                navHostController.currentBackStackEntry?.savedStateHandle?.set(
+                    "useruidchat",
+                    user.uid
+                )
 
-            saveUserData(context, user, "userdata")
+                saveUserData(context, user, "userdata")
 
-            Toast.makeText(context, "Sussessfully added user", Toast.LENGTH_SHORT).show()
-            navHostController.navigate(HOME_SCREEN)
-        }
-        if(it.isCanceled){
-            Toast.makeText(context, "Fail adding user", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Регистрация прошла успешно", Toast.LENGTH_SHORT).show()
+                navHostController.navigate(HOME_SCREEN)
+            }
+            if(it.isCanceled){
+                Toast.makeText(context, "Регистрация не удалась, попробуйте еще раз", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

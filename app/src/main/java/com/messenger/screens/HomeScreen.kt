@@ -3,6 +3,8 @@ package com.messenger.screens
 import android.annotation.SuppressLint
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -55,7 +57,6 @@ import com.messenger.ui.theme.Line
 import com.messenger.ui.theme.gradient1
 import com.messenger.ui.theme.gradient2
 import com.messenger.ui.theme.gradient3
-import com.messenger.ui.theme.gradient4
 import com.messenger.R
 import java.util.Locale
 
@@ -70,11 +71,21 @@ fun HomeScreen(
 
     var userList by remember { mutableStateOf<List<User>>(emptyList()) }
     if(user != null){
+        if(!isInternetConnected(context)){
+            Toast.makeText(context, "Пожалуйста, проверьте интернет подключения..", Toast.LENGTH_SHORT).show()
+        }
+        else{
         LaunchedEffect(user.uid) {
-            fetchUsers(database, context) { updatedUserList ->
+            fetchUsers(database, context, user) { updatedUserList ->
                 userList = updatedUserList
             }
-        }
+        }}
+    }
+
+    BackHandler(enabled = true) {
+        // Handle back button press here
+        // You can use the onBackPressed() method or any other logic you want
+        onBackPressed(context)
     }
 
     Box(
@@ -186,7 +197,7 @@ fun SearchBar(onSearch: (String) -> Unit) {
                     tint = Color(0xFF9DB7CB)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Search...", color = Color(0xFF9DB7CB))
+                Text("Поиск", color = Color(0xFF9DB7CB))
             }
         },
     )
@@ -197,7 +208,7 @@ fun UserEachRow(
     user: User,
     onClick: () -> Unit
 ) {
-    val gradientList = listOf(gradient1, gradient2, gradient3, gradient4)
+    val gradientList = listOf(gradient1, gradient2, gradient3)
 
     Box(
         modifier = Modifier
@@ -216,6 +227,8 @@ fun UserEachRow(
                         "${user.name!!.first()}${user.surname!!.first()}".uppercase(Locale.ROOT)
                     val randomGradient = gradientList.random()
                     val gradientBrush = Brush.linearGradient(randomGradient)
+                    val randomMessages = listOf("Вы: Уже сделал?", "Я готов", "Вы: Я вышел")
+                    val randomMessage = randomMessages.random()
 
                     IconComponentDrawable(text = iconText, size = 60.dp, backgroundColor = gradientBrush, textColor = Color.White)
                     SpacerWidth()
@@ -239,15 +252,17 @@ fun UserEachRow(
 
                         SpacerHeight(5.dp)
                         Text(
-                            text = "Okey", style = TextStyle(
+                            text = randomMessage, style = TextStyle(
                                 color = Gray, fontSize = 14.sp
                             )
                         )
                     }
 
                 }
+                val randomDatas = listOf("Вчера", "12.01.22", "2 минуты назад", "09:23")
+                val randomData = randomDatas.random()
                 Text(
-                    text = stringResource(R.string._12_23_pm), style = TextStyle(
+                    text = randomData, style = TextStyle(
                         color = Gray, fontSize = 12.sp
                     )
                 )
@@ -284,6 +299,7 @@ fun Modifier.noRippleEffect(onClick: () -> Unit) = composed {
 private fun fetchUsers(
     database: DatabaseReference,
     context: Context,
+    user:User,
     onUsersFetched: (List<User>) -> Unit
 ) {
     val userList = ArrayList<User>()
@@ -294,17 +310,16 @@ private fun fetchUsers(
                 val user = userSnapshot.getValue(User::class.java)
                 user?.let { userList.add(it) }
             }
-            if (userList.isNotEmpty()) {
-                Toast.makeText(context, "Users loaded successfully", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "No users found", Toast.LENGTH_SHORT).show()
-            }
-
+            userList.remove(user)
             onUsersFetched(userList)
         }
 
         override fun onCancelled(databaseError: DatabaseError) {
-            Toast.makeText(context, "Error fetching users", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Ошибка при получении пользователей", Toast.LENGTH_SHORT).show()
         }
     })
+}
+
+fun onBackPressed(context: Context) {
+    (context as? ComponentActivity)?.onBackPressed()
 }

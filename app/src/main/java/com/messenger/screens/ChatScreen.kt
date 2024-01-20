@@ -69,7 +69,6 @@ import com.messenger.ui.theme.SenderColor
 import com.messenger.ui.theme.gradient1
 import com.messenger.ui.theme.gradient2
 import com.messenger.ui.theme.gradient3
-import com.messenger.ui.theme.gradient4
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -90,24 +89,30 @@ fun ChatScreen(
     var database = Firebase.database.reference
 
     var messageList by remember { mutableStateOf<List<Message>>(emptyList()) }
-    val databaseReference: DatabaseReference =
-        database.child("chats").child(senderroom).child("messages")
 
-    databaseReference.addValueEventListener(object : ValueEventListener {
-        override fun onDataChange(snapshot: DataSnapshot) {
-            val newMessageList = mutableListOf<Message>()
+    if(!isInternetConnected(context)){
+        Toast.makeText(context, "Пожалуйста, проверьте интернет подключения..", Toast.LENGTH_SHORT).show()
+    }
+    else{
+        val databaseReference: DatabaseReference =
+            database.child("chats").child(senderroom).child("messages")
+        databaseReference.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val newMessageList = mutableListOf<Message>()
 
-            for (dataSnapshot in snapshot.children) {
-                val message = dataSnapshot.getValue(Message::class.java)
-                newMessageList.add(message!!)
+                for (dataSnapshot in snapshot.children) {
+                    val message = dataSnapshot.getValue(Message::class.java)
+                    newMessageList.add(message!!)
+                }
+                messageList = newMessageList
             }
-            messageList = newMessageList
-        }
 
-        override fun onCancelled(error: DatabaseError) {
-            TODO("Not yet implemented")
-        }
-    })
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
+        })
+    }
+
 
     Box(
         modifier = Modifier
@@ -187,14 +192,14 @@ fun ChatRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(4.dp),
         horizontalAlignment = if (message.id != senderuid) Alignment.Start else Alignment.End
     ) {
         Box(
             modifier = Modifier
                 .background(
                     if (message.id != senderuid) ReceiverColor else SenderColor,
-                    RoundedCornerShape(100.dp)
+                    RoundedCornerShape(20.dp)
                 )
                 .padding(4.dp),
             contentAlignment = Center
@@ -212,7 +217,7 @@ fun ChatRow(
                         fontSize = 16.sp
                     ),
                     modifier = Modifier
-                        .widthIn(0.dp, 232.dp)
+                        .widthIn(0.dp, 200.dp)
                 )
                 Text(
                     text = message.time!!,
@@ -261,7 +266,7 @@ fun CustomTextField(
         ),
         leadingIcon = {
             val context: Context = LocalContext.current
-            IconButton(onClick = { Toast.makeText(context, "Add!!", Toast.LENGTH_SHORT)
+            IconButton(onClick = { Toast.makeText(context, "Добавить файлы!!", Toast.LENGTH_SHORT)
                 .show()}) {
                 Icon(
                     imageVector = Icons.Outlined.Add,
@@ -273,9 +278,6 @@ fun CustomTextField(
             val context: Context = LocalContext.current
             IconButton(onClick = {
                 if(message.isNotEmpty()){
-                    Toast.makeText(context, "Send!!", Toast.LENGTH_SHORT)
-                        .show()
-
                     message = message.replace("\\s+$".toRegex(), "")
                     val formatter = DateTimeFormatter.ofPattern("hh:mm a")
                     val currentTime = LocalTime.now()
@@ -285,23 +287,24 @@ fun CustomTextField(
                     val senderroom = useruid+receiveruid
                     val receiverroom = receiveruid+useruid
 
-                    val senderRef = database.child("chats")
-                        .child(senderroom)
-                        .child("messages")
-                        .push()
+                    if(!isInternetConnected(context)){
+                        Toast.makeText(context, "Пожалуйста, проверьте интернет подключения..", Toast.LENGTH_SHORT).show()
+                    }
+                    else{
+                        val senderRef = database.child("chats")
+                            .child(senderroom)
+                            .child("messages")
+                            .push()
 
-                    val receiverRef = database.child("chats")
-                        .child(receiverroom)
-                        .child("messages")
-                        .push()
+                        val receiverRef = database.child("chats")
+                            .child(receiverroom)
+                            .child("messages")
+                            .push()
 
-                    senderRef.setValue(oneMessage).addOnCompleteListener { senderTask ->
-                        if (senderTask.isSuccessful) {
-                            receiverRef.setValue(oneMessage).addOnCompleteListener {
-                                Toast.makeText(context, "Sussessfully added", Toast.LENGTH_SHORT).show()
-                            }
-                        } else {
-                            Toast.makeText(context, "Failer added", Toast.LENGTH_SHORT).show()
+                        senderRef.setValue(oneMessage).addOnCompleteListener { senderTask ->
+                            if (senderTask.isSuccessful) {
+                                receiverRef.setValue(oneMessage).addOnCompleteListener {}
+                            } else {}
                         }
                     }
 
@@ -348,10 +351,7 @@ fun UserNameRow(
                     }
 
                 }
-                Toast.makeText(
-                    context, "Back!!", Toast.LENGTH_SHORT
-                )
-                    .show()}) {
+               }) {
                 Icon(
                     imageVector = Icons.Outlined.KeyboardArrowLeft,
                     modifier = Modifier
@@ -360,7 +360,7 @@ fun UserNameRow(
                     contentDescription = "send"
                 )
             }
-            val gradientList = listOf(gradient1, gradient2, gradient3, gradient4)
+            val gradientList = listOf(gradient1, gradient2, gradient3)
 
             var iconText = "${user.name!!.first()}${user.surname!!.first()}".uppercase(Locale.ROOT)
             val randomGradient = gradientList.random()

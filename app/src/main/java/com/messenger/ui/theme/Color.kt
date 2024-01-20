@@ -31,7 +31,3 @@ val gradient3 = listOf(
     Color(0xFF00ACF6),
     Color(0xFF006DED)
 )
-val gradient4 = listOf(
-    Color(0xFFF66700),
-    Color(0xFFED3900)
-)

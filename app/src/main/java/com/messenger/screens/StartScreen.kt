@@ -3,6 +3,8 @@ package com.messenger.screens
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.text.TextUtils
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -62,7 +64,7 @@ fun StartScreen(navHostController: NavHostController) {
                     TopAppBar(
                         title = {
                             Text(
-                                text = "Messenger MOOZ",
+                                text = "Мессенджер MOOZ",
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp),
@@ -89,27 +91,22 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
     var phonenumber by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var verificationID by remember { mutableStateOf("") }
-    val message = remember {
-        mutableStateOf("")
-    }
 
     var mAuth: FirebaseAuth = FirebaseAuth.getInstance();
     var callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks(){
         override fun onVerificationCompleted(p0: PhoneAuthCredential) {
-            message.value = "Verification successful"
-            Toast.makeText(context, "Verification successful..", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Проверка прошла успешно.", Toast.LENGTH_SHORT).show()
         }
 
         override fun onVerificationFailed(e: FirebaseException) {
-            message.value = "Fail to verify user : \n" + e.message
-            Toast.makeText(context, "Verification failed..", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Проверка не удалась.", Toast.LENGTH_SHORT).show()
             if (e is FirebaseAuthInvalidCredentialsException) {
-                Toast.makeText(context, "Verification failed Invalid request", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Проверка не удалась. Неверный запрос.t", Toast.LENGTH_SHORT).show()
             } else if (e is FirebaseTooManyRequestsException) {
-                Toast.makeText(context, "Verification failed The SMS quota for the project has been exceeded", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Проверка не удалась. Превышена квота SMS для проекта.", Toast.LENGTH_SHORT).show()
             }
             else if (e is FirebaseAuthMissingActivityForRecaptchaException) {
-                Toast.makeText(context, "Verification failed reCAPTCHA verification attempted with null Activity", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Проверка не удалась. Попытка проверки reCAPTCHA с нулевой активностью.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -130,7 +127,7 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
             value = phonenumber,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             onValueChange = { phonenumber = it },
-            placeholder = { Text(text = "Enter your phone number") },
+            placeholder = { Text(text = "Введите свой номер телефона") },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
@@ -150,14 +147,14 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
         Button(
             onClick = {
                 if (TextUtils.isEmpty(phonenumber)) {
-                    Toast.makeText(context, "Please enter phone number..", Toast.LENGTH_SHORT)
+                    Toast.makeText(context, "Пожалуйста, введите номер телефона..", Toast.LENGTH_SHORT)
                         .show()
                 }
+                else if(!isInternetConnected(context)){
+                    Toast.makeText(context, "Пожалуйста, проверьте интернет подключения..", Toast.LENGTH_SHORT).show()
+                }
                 else{
-                    Toast.makeText(context, "ok", Toast.LENGTH_SHORT)
-                        .show()
                     sendVerificationCode(phonenumber, mAuth, context as Activity, callbacks)
-
                 }
             },
             modifier = Modifier
@@ -166,7 +163,7 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
                 .background(color = greenColor, shape = RoundedCornerShape(5.dp))
         ) {
             Text(
-                text = "Generate CODE",
+                text = "Сгенерировать КОД",
                 modifier = Modifier.padding(8.dp),
                 style = TextStyle(fontSize = 20.sp)
             )
@@ -178,7 +175,7 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
             value = code,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             onValueChange = { code = it },
-            placeholder = { Text(text = "Enter your CODE") },
+            placeholder = { Text(text = "Введите ваш код") },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
@@ -198,8 +195,12 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
         Button(
             onClick = {
                 if (TextUtils.isEmpty(code)) {
-                    Toast.makeText(context, "Please enter CODE..", Toast.LENGTH_SHORT).show()
-                } else {
+                    Toast.makeText(context, "Пожалуйста, введите КОД..", Toast.LENGTH_SHORT).show()
+                }
+                else if(!isInternetConnected(context)){
+                    Toast.makeText(context, "Пожалуйста, проверьте интернет подключения..", Toast.LENGTH_SHORT).show()
+                }
+                else {
                     val credential: PhoneAuthCredential = PhoneAuthProvider.getCredential(
                         verificationID, code
                     )
@@ -209,7 +210,6 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
                         mAuth,
                         context as Activity,
                         context,
-                        message,
                         navHostController
                     )
                 }
@@ -220,18 +220,11 @@ fun VerificationUI(context: Context, navHostController: NavHostController) {
                 .background(color = greenColor, shape = RoundedCornerShape(5.dp))
         ) {
             Text(
-                text = "Verify CODE",
+                text = "Подтвердит КОД",
                 modifier = Modifier.padding(8.dp),
                 style = TextStyle(fontSize = 20.sp)
             )
         }
-
-        Spacer(modifier = Modifier.height(5.dp))
-
-        Text(
-            text = message.value,
-            style = TextStyle(color = greenColor, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        )
     }
 }
 
@@ -240,13 +233,11 @@ private fun signInWithPhoneAuthCredential(
     auth: FirebaseAuth,
     activity: Activity,
     context: Context,
-    message: MutableState<String>,
     navHostController: NavHostController
 ) {
     auth.signInWithCredential(credential)
         .addOnCompleteListener(activity) { task ->
             if (task.isSuccessful) {
-                message.value = "Verification successful"
                 val user = task.result?.user!!
                 Toast.makeText(context, "uid = ${user.uid}", Toast.LENGTH_SHORT).show()
                 navHostController.currentBackStackEntry?.savedStateHandle?.set(
@@ -262,7 +253,7 @@ private fun signInWithPhoneAuthCredential(
                 if (task.exception is FirebaseAuthInvalidCredentialsException) {
                     Toast.makeText(
                         context,
-                        "Verification failed.." + (task.exception as FirebaseAuthInvalidCredentialsException).message,
+                        "Проверка не удалась." + (task.exception as FirebaseAuthInvalidCredentialsException).message,
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -284,4 +275,20 @@ private fun sendVerificationCode(
         .setCallbacks(callbacks)
         .build()
     PhoneAuthProvider.verifyPhoneNumber(options)
+}
+
+fun isInternetConnected(context: Context): Boolean {
+    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
+
+    if (connectivityManager != null) {
+        val network = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(network)
+
+        return capabilities != null &&
+                (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+    }
+
+    return false
 }
